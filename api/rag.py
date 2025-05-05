@@ -2,8 +2,10 @@ from typing import Any, List, Tuple, Dict
 from uuid import uuid4
 import logging
 import re
+import os
 import adalflow as adal
 from dataclasses import dataclass, field
+from adalflow.core.types import Document
 
 # Create our own implementation of the conversation classes
 @dataclass
@@ -217,11 +219,31 @@ class RAG(adal.Component):
 
         # Initialize components
         self.memory = Memory()
-
-        self.embedder = adal.Embedder(
-            model_client=configs["embedder"]["model_client"](),
-            model_kwargs=configs["embedder"]["model_kwargs"],
+        
+        from api.gemini_patch import GeminiDocumentProcessor
+        
+        # Create a custom embedder function that uses Gemini
+        self.gemini_processor = GeminiDocumentProcessor(
+            api_key=os.environ.get("GOOGLE_API_KEY"),
+            model=configs["embedder"]["model"],
+            dimensions=configs["embedder"]["dimensions"]
         )
+        
+        def query_embedder(query):
+            if isinstance(query, list):
+                if len(query) != 1:
+                    raise ValueError("Gemini embedder only supports a single string")
+                query = query[0]
+                
+            # Create a temporary document with the query
+            temp_doc = Document(text=query)
+            processed_docs = self.gemini_processor([temp_doc])
+            if hasattr(processed_docs[0], 'vector') and processed_docs[0].vector is not None:
+                return processed_docs[0].vector
+            else:
+                raise ValueError("Failed to generate embedding for query")
+                
+        self.embedder = query_embedder
 
         self.initialize_db_manager()
 
