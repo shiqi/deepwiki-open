@@ -6,11 +6,12 @@ import os
 configs = {
     "embedder": {
         "batch_size": 500,
-        "model_client": OpenAIClient,
+        "model_client": OpenAIClient, #GoogleGenAIClient,
         "model_kwargs": {
-            "model": "text-embedding-3-small",
+            "model": "text-embedding-3-small",#"models/embedding-001",
             "dimensions": 256,
             "encoding_format": "float",
+            "task_type": "retrieval_document"
         },
     },
     "retriever": {

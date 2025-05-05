@@ -4,7 +4,8 @@ import logging
 import re
 import adalflow as adal
 from dataclasses import dataclass, field
-
+from api.data_pipeline import GoogleEmbedder, SimpleEmbedderWrapper
+import os
 # Create our own implementation of the conversation classes
 @dataclass
 class UserQuery:
@@ -218,9 +219,9 @@ class RAG(adal.Component):
         # Initialize components
         self.memory = Memory()
 
-        self.embedder = adal.Embedder(
-            model_client=configs["embedder"]["model_client"](),
-            model_kwargs=configs["embedder"]["model_kwargs"],
+        self.embedder = GoogleEmbedder(
+            model_name=configs["embedder"]["model_kwargs"]["model"], 
+            task_type=configs["embedder"]["model_kwargs"].get("task_type", "retrieval_document")
         )
 
         self.initialize_db_manager()
@@ -270,6 +271,7 @@ IMPORTANT FORMATTING RULES:
         """
         self.initialize_db_manager()
         self.repo_url_or_path = repo_url_or_path
+        logger.info(f"db manager initialized")
         self.transformed_docs = self.db_manager.prepare_database(repo_url_or_path, access_token)
         logger.info(f"Loaded {len(self.transformed_docs)} documents for retrieval")
         self.retriever = FAISSRetriever(
@@ -307,7 +309,7 @@ IMPORTANT FORMATTING RULES:
 
             # Generate response
             response = self.generator(prompt_kwargs=prompt_kwargs)
-
+            logger.info(f"Response: {response}")
             final_response = response.data
 
             # Check if final_response is None and create a default response if needed
