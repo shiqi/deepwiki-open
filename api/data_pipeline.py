@@ -7,12 +7,39 @@ import json
 import tiktoken
 import logging
 import base64
-import re
 import glob
 from adalflow.utils import get_adalflow_default_root_path
 from adalflow.core.db import LocalDB
 from api.config import configs
+from google.genai import types
+from openai import OpenAI
 
+class GoogleEmbedder(adal.Embedder):
+    def __init__(self, model_name="gemini-embedding-exp-03-07", **kwargs):
+        #self.client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+        self.client = OpenAI(
+            api_key=os.environ.get("GOOGLE_API_KEY"),
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+        )
+        self.model_name = model_name
+        self.config = types.EmbedContentConfig(output_dimensionality=256)
+
+    def embed(self, texts):
+        embeddings = []
+        for text in texts:
+            response = self.client.embeddings.create(
+                input=text,
+                model="text-embedding-004"
+            )
+            embeddings.append(response.data[0].embedding)
+        return embeddings
+
+    
+class SimpleEmbedderWrapper:
+    def __init__(self, embedder):
+        self.embedder = embedder
+    def call(self, input, **kwargs):
+        return self.embedder.embed(input)
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -227,16 +254,20 @@ def read_all_documents(path: str):
 def prepare_data_pipeline():
     """Creates and returns the data transformation pipeline."""
     splitter = TextSplitter(**configs["text_splitter"])
-    embedder = adal.Embedder(
-        model_client=configs["embedder"]["model_client"](),
-        model_kwargs=configs["embedder"]["model_kwargs"],
+    google_embedder = GoogleEmbedder(
+        model_name=configs["embedder"]["model_kwargs"]["model"], 
+        task_type=configs["embedder"]["model_kwargs"].get("task_type", "retrieval_document")
     )
+    # Wrap the GoogleEmbedder in a simple interface that ToEmbeddings expects
     embedder_transformer = ToEmbeddings(
-        embedder=embedder, batch_size=configs["embedder"]["batch_size"]
+        embedder=SimpleEmbedderWrapper(google_embedder), #configs["embedder"]["model_client"]()
+        batch_size=configs["embedder"]["batch_size"]
     )
+
     data_transformer = adal.Sequential(
         splitter, embedder_transformer
     )  # sequential will chain together splitter and embedder
+
     return data_transformer
 
 def transform_documents_and_save_to_db(
@@ -254,11 +285,20 @@ def transform_documents_and_save_to_db(
 
     # Save the documents to a local database
     db = LocalDB()
+    logger.info("db initialized")
     db.register_transformer(transformer=data_transformer, key="split_and_embed")
+    logger.info("transformer registered")
     db.load(documents)
+    logger.info("documents loaded")
+    #for i in db.items:
+    print(f"Item {print([attr for attr in vars(db.items[0])])}:\n")
     db.transform(key="split_and_embed")
+
+    logger.info("documents transformed")
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    logger.info("db path made")
     db.save_state(filepath=db_path)
+    logger.info("db saved")
     return db
 
 def get_github_file_content(repo_url: str, file_path: str, access_token: str = None) -> str:
@@ -545,7 +585,9 @@ class DatabaseManager:
             List[Document]: List of Document objects
         """
         self.reset_database()
+        logger.info("database reset")
         self._create_repo(repo_url_or_path, access_token)
+        logger.info("repo created")
         return self.prepare_db_index()
 
     def reset_database(self):
@@ -638,6 +680,7 @@ class DatabaseManager:
         # prepare the database
         logger.info("Creating new database...")
         documents = read_all_documents(self.repo_paths["save_repo_dir"])
+        logger.info("Finished reading all documents")
         self.db = transform_documents_and_save_to_db(
             documents, self.repo_paths["save_db_file"]
         )
