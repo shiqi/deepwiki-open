@@ -20,34 +20,26 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Maximum token limit for Gemini embedding models (using a conservative value)
-MAX_EMBEDDING_TOKENS = 8000
+# Maximum token limit for OpenAI embedding models
+MAX_EMBEDDING_TOKENS = 8192
 
-def count_tokens(text: str, model: str = "gemini-embedding-exp-03-07") -> int:
+def count_tokens(text: str, model: str = "text-embedding-3-small") -> int:
     """
-    Count the number of tokens in a text string.
-    
-    For Gemini embeddings, we use a rough approximation since there's no 
-    official tokenizer available.
-    
+    Count the number of tokens in a text string using tiktoken.
+
     Args:
         text (str): The text to count tokens for.
         model (str): The model to use for tokenization.
-    
+
     Returns:
         int: The number of tokens in the text.
     """
     try:
-        if "text-embedding" in model:  # OpenAI fallback if needed
-            import tiktoken
-            encoding = tiktoken.encoding_for_model(model)
-            return len(encoding.encode(text))
-        else:  # Gemini approximation
-            # Rough approximation: 4 characters per token
-            return len(text) // 4
+        encoding = tiktoken.encoding_for_model(model)
+        return len(encoding.encode(text))
     except Exception as e:
-        # Fallback to a simple approximation if counting fails
-        logger.warning(f"Error counting tokens: {e}")
+        # Fallback to a simple approximation if tiktoken fails
+        logger.warning(f"Error counting tokens with tiktoken: {e}")
         # Rough approximation: 4 characters per token
         return len(text) // 4
 

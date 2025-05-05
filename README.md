@@ -33,15 +33,17 @@
 git clone https://github.com/AsyncFuncAI/deepwiki-open.git
 cd deepwiki-open
 
-# Create a .env file with your API key
+# Create a .env file with your API keys
 echo "GOOGLE_API_KEY=your_google_api_key" > .env
+echo "OPENAI_API_KEY=your_openai_api_key" >> .env
 
 # Run with Docker Compose
 docker-compose up
 ```
 
-> 💡 **Where to get your key:**
+> 💡 **Where to get these keys:**
 > - Get a Google API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+> - Get an OpenAI API key from [OpenAI Platform](https://platform.openai.com/api-keys)
 
 ### Option 2: Manual Setup (Recommended)
 
@@ -149,7 +151,8 @@ deepwiki/
 
 | Variable | Description | Required | Note |
 |----------|-------------|----------|------|
-| `GOOGLE_API_KEY` | Google Gemini API key for AI generation and embeddings | Yes |
+| `GOOGLE_API_KEY` | Google Gemini API key for AI generation | Yes |
+| `OPENAI_API_KEY` | OpenAI API key for embeddings | Yes |
 | `PORT` | Port for the API server (default: 8001) | No | If you host API and frontend on the same machine, make sure change port of `NEXT_PUBLIC_SERVER_BASE_URL` accordingly |
 | `NEXT_PUBLIC_SERVER_BASE_URL` | Base URL for the API server (default: http://localhost:8001) | No |
 
@@ -164,6 +167,7 @@ docker pull ghcr.io/asyncfuncai/deepwiki-open:latest
 # Run the container with environment variables
 docker run -p 8001:8001 -p 3000:3000 \
   -e GOOGLE_API_KEY=your_google_api_key \
+  -e OPENAI_API_KEY=your_openai_api_key \
   -v ~/.adalflow:/root/.adalflow \
   ghcr.io/asyncfuncai/deepwiki-open:latest
 ```
@@ -180,8 +184,9 @@ docker-compose up
 You can also mount a .env file to the container:
 
 ```bash
-# Create a .env file with your API key
+# Create a .env file with your API keys
 echo "GOOGLE_API_KEY=your_google_api_key" > .env
+echo "OPENAI_API_KEY=your_openai_api_key" >> .env
 
 # Run the container with the .env file mounted
 docker run -p 8001:8001 -p 3000:3000 \
@@ -205,6 +210,7 @@ docker build -t deepwiki-open .
 # Run the container
 docker run -p 8001:8001 -p 3000:3000 \
   -e GOOGLE_API_KEY=your_google_api_key \
+  -e OPENAI_API_KEY=your_openai_api_key \
   deepwiki-open
 ```
 

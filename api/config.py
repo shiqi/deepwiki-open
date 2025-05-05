@@ -1,15 +1,16 @@
 from adalflow import GoogleGenAIClient
+from adalflow.components.model_client.openai_client import OpenAIClient
 import os
 
 # Configuration for the isolated API
 configs = {
     "embedder": {
         "batch_size": 500,
-        "model_client": GoogleGenAIClient,
+        "model_client": OpenAIClient,
         "model_kwargs": {
-            "model": "gemini-embedding-exp-03-07",
+            "model": "text-embedding-3-small",
             "dimensions": 256,
-            "task_type": "SEMANTIC_SIMILARITY",
+            "encoding_format": "float",
         },
     },
     "retriever": {
@@ -64,9 +65,12 @@ configs = {
     },
 }
 
-# Get API key from environment variables
+# Get API keys from environment variables
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 GOOGLE_API_KEY = os.environ.get('GOOGLE_API_KEY')
 
-# Set key in environment (in case it's needed elsewhere in the code)
+# Set keys in environment (in case they're needed elsewhere in the code)
+if OPENAI_API_KEY:
+    os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 if GOOGLE_API_KEY:
     os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
